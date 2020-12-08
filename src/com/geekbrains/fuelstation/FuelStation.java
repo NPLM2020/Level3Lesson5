@@ -68,12 +68,4 @@ public class FuelStation {
         return false;
     }
 
-    private class QueueManager implements Runnable {
-
-        @Override
-        public void run() {
-
-        }
-    }
-
 }
