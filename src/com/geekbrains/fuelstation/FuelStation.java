@@ -24,16 +24,21 @@ public class FuelStation {
 
     public void enter(Vehicle vehicle) {
         if (semaphore.tryAcquire()) {
-            System.out.printf("\n%s tries to refill.", vehicle.getId());
-            boolean isRefill = refill(vehicle);
-            semaphore.release();
+            boolean isRefill;
+            try {
+                System.out.printf("\n%s tries to refill.", vehicle.getId());
+                isRefill = refill(vehicle);
+            } finally {
+                semaphore.release();
+            }
             new Thread(this::moveQueue).start();
             if (isRefill) {
-                System.out.printf("\n%s has refilled.", vehicle.getId());
-                vehicle.go();
-            } else {
-                System.out.printf("\n%s has not refilled and stops working.", vehicle.getId());
-            }
+                 System.out.printf("\n%s has refilled.", vehicle.getId());
+                 vehicle.go();
+             } else {
+                 System.out.printf("\n%s has not refilled and stops working.", vehicle.getId());
+             }
+
         } else {
             lock.writeLock().lock();
             queue.add(vehicle);
@@ -43,17 +48,23 @@ public class FuelStation {
     }
 
     private void moveQueue() {
-        if ((long) queue.size() > 0) {
-            Vehicle vehicle = queue.getFirst();
+        if (queue.size() > 0) {
+            Vehicle vehicle;
             lock.writeLock().lock();
-            queue.removeFirst();
-            lock.writeLock().unlock();
-            System.out.printf("\n%s go to refill from queue.", vehicle.getId());
-            enter(vehicle);
+            try {
+                vehicle = queue.getFirst();
+                queue.removeFirst();
+            } finally {
+                lock.writeLock().unlock();
+            }
+            if (vehicle != null) {
+                System.out.printf("\n%s go to refill from queue.", vehicle.getId());
+                enter(vehicle);
+            }
         }
     }
 
-    private synchronized boolean refill(Vehicle vehicle) {
+    private boolean refill(Vehicle vehicle) {
         if (gasPool.request(vehicle.getVolume() - vehicle.getLevel())) {
             System.out.printf("\n%s is refilling...", vehicle.getId());
             try {
@@ -62,7 +73,6 @@ public class FuelStation {
                 e.printStackTrace();
             }
             vehicle.setLevel(vehicle.getVolume());
-            gasPool.setLevel(gasPool.getLevel() - vehicle.getLevel());
             return true;
         }
         return false;

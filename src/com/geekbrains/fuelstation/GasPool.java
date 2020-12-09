@@ -1,6 +1,9 @@
 package com.geekbrains.fuelstation;
 
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 public class GasPool {
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private static final float volume = 200f;
     private float level;
 
@@ -9,14 +12,27 @@ public class GasPool {
     }
 
     protected boolean request(float amount) {
-        return !(amount >= level);
+        try {
+            lock.writeLock().lock();
+            System.out.print("\nLevel in GasPool is: " + info());
+            if (amount <= level) {
+                level -= amount;
+                return true;
+            }
+            return false;
+        }
+        finally {
+            lock.writeLock().unlock();
+        }
     }
 
-    protected float getLevel() {
-        return level;
-    }
-
-    protected void setLevel(float level) {
-        this.level = level;
+    private float info() {
+        try {
+            lock.readLock().lock();
+            return level;
+        }
+        finally {
+            lock.readLock().unlock();
+        }
     }
 }
